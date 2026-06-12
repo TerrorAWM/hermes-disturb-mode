@@ -1,5 +1,7 @@
 # Hermes Disturb Toggle
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 A small Hermes Agent plugin that adds `/disturb` to toggle busy-task
 acknowledgment messages without changing task execution.
 

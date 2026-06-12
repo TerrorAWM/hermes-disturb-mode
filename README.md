@@ -17,7 +17,7 @@ disabled by default.
 ## Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hermes-disturb-toggle.git \
+git clone https://github.com/TerrorAWM/hermes-disturb-mode.git \
   ~/.hermes/plugins/disturb-toggle
 ```
 

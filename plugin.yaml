@@ -1,0 +1,7 @@
+name: disturb-toggle
+version: "0.1.0"
+description: "Toggle Hermes busy-task acknowledgment messages with /disturb."
+author: "Ricardo"
+kind: standalone
+hooks:
+  - pre_gateway_dispatch

@@ -8,6 +8,7 @@ from typing import Any
 
 
 STATE_PATH = Path.home() / ".hermes" / "disturb-toggle.json"
+LONG_RUNNING_PREFIX = "⏳ Still working..."
 
 
 def _platform_name(source: Any) -> str:
@@ -80,14 +81,14 @@ def _install_busy_wrapper(gateway: Any) -> None:
             enabled = _toggle(platform)
             state = "ON" if enabled else "OFF"
             detail = (
-                "Busy-task acknowledgment messages will be sent."
+                "Busy-task acknowledgments and long-running heartbeats are now silent."
                 if enabled
-                else "Busy-task acknowledgment messages are now silent."
+                else "Busy-task acknowledgments and long-running heartbeats will be shown."
             )
             await _send(gateway, event, f"`/disturb`: **{state}** for **{platform}**\n{detail}")
             return True
 
-        if _is_enabled(platform):
+        if not _is_enabled(platform):
             return await original(event, session_key)
 
         # Hermes already suppresses repeated busy acknowledgments through this
@@ -103,8 +104,41 @@ def _install_busy_wrapper(gateway: Any) -> None:
             adapter.set_busy_session_handler(wrapped_busy_handler)
 
 
+def _install_send_wrappers(gateway: Any) -> None:
+    wrapped_platforms = getattr(gateway, "_disturb_toggle_wrapped_platforms", set())
+
+    for platform, adapter in gateway.adapters.items():
+        platform_name = str(getattr(platform, "value", platform) or "unknown").lower()
+        if platform_name in wrapped_platforms:
+            continue
+
+        original_send = adapter.send
+
+        async def filtered_send(
+            chat_id: Any,
+            content: Any,
+            *args: Any,
+            _platform_name: str = platform_name,
+            _original_send: Any = original_send,
+            **kwargs: Any,
+        ) -> Any:
+            if (
+                _is_enabled(_platform_name)
+                and isinstance(content, str)
+                and content.startswith(LONG_RUNNING_PREFIX)
+            ):
+                return None
+            return await _original_send(chat_id, content, *args, **kwargs)
+
+        adapter.send = filtered_send
+        wrapped_platforms.add(platform_name)
+
+    gateway._disturb_toggle_wrapped_platforms = wrapped_platforms
+
+
 def _pre_gateway_dispatch(event: Any, gateway: Any, **_: Any) -> dict[str, str] | None:
     _install_busy_wrapper(gateway)
+    _install_send_wrappers(gateway)
 
     command, args = _command_parts(event)
     if command != "disturb":
@@ -118,9 +152,9 @@ def _pre_gateway_dispatch(event: Any, gateway: Any, **_: Any) -> dict[str, str] 
         enabled = _toggle(platform)
         state = "ON" if enabled else "OFF"
         detail = (
-            "Busy-task acknowledgment messages will be sent."
+            "Busy-task acknowledgments and long-running heartbeats are now silent."
             if enabled
-            else "Busy-task acknowledgment messages are now silent."
+            else "Busy-task acknowledgments and long-running heartbeats will be shown."
         )
         await _send(gateway, event, f"`/disturb`: **{state}** for **{platform}**\n{detail}")
 
